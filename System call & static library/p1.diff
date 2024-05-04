@@ -1,0 +1,88 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index bbfc6d440870..5b97bcb975af 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -345,6 +345,9 @@
+ 334	common	rseq			__x64_sys_rseq
+ 424	common	pidfd_send_signal	__x64_sys_pidfd_send_signal
+ 434	common	pidfd_open		__x64_sys_pidfd_open
++435 common  get_proc_log_level  __x64_sys_get_proc_log_level
++436 common  set_proc_log_level  __x64_sys_set_proc_log_level
++437 common  proc_log_message    __x64_sys_proc_log_message
+ 
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 8e5b2c6d5dea..3ee86d1e1439 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1298,3 +1298,7 @@ static inline unsigned int ksys_personality(unsigned int personality)
+ }
+ 
+ #endif
++
++asmlinkage int sys_get_proc_log_level(void);
++asmlinkage int sys_set_proc_log_level(int new_level);
++asmlinkage int sys_proc_log_message(char* message, int level);
+\ No newline at end of file
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 0a1cdee858de..1606b2937a32 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -2807,3 +2807,55 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
+ 	return 0;
+ }
+ #endif /* CONFIG_COMPAT */
++
++static int logLevel = 0;
++SYSCALL_DEFINE0(get_proc_log_level) {
++    if(logLevel >= 0 && logLevel <= 7) {
++		return logLevel;
++    }
++    return -1;
++}
++
++SYSCALL_DEFINE1(set_proc_log_level, int, new_level) {
++    if(new_level < 0 || new_level > 7 || current_cred()->euid.val != 0) {
++        return -1;
++    }
++	logLevel = new_level;
++	return logLevel;
++}
++
++SYSCALL_DEFINE2(proc_log_message, char*, message, int, level) {
++	char safeMessage[129];
++	memset(safeMessage, 0, 129);
++	long return_val = copy_from_user(safeMessage, message, 128);
++
++	if(level < 0 || level > 7) {
++		return -1;
++	}
++
++	if(level > logLevel) {
++		return level;
++	}
++	
++	switch(level) {
++		case 0:
++				printk(KERN_EMERG "PROC_OVERRIDE [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 1:
++				printk(KERN_ALERT "PROC_ALERT [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 2:
++				printk(KERN_CRIT "PROC_CRITICAL [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 3:
++				printk(KERN_ERR "PROC_ERROR [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 4:
++				printk(KERN_WARNING "PROC_WARNING [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 5:
++				printk(KERN_NOTICE "PROC_NOTICE [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 6:
++				printk(KERN_INFO "PROC_INFO [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		case 7:				
++				printk(KERN_DEBUG "PROC_DEBUG [%s, %d]: %s\n", current->comm, current->pid, safeMessage);
++		default:
++			return level;
++	}
++	return level;
++}
+\ No newline at end of file

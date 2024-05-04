@@ -1,0 +1,99 @@
+.TH "cop4600 project1" "02/23/2024"
+.SH NAME
+Peoject \- System Calls
+
+.SH SYNOPSIS
+.RS
+Implement system calls about getting/setting log levels and adding log messages at specific levels through C API.
+.br
+Create library and harness functions.
+.RE
+
+.SH DESCRIPTION
+.B [Three files are modified to implement syscalls in Reptilian kernel.]
+
+.PP 
+/usr/rep/src/reptilian-kernel/arch/x86/entry/syscalls/syscall_64.tbl
+.RS
+Assigns syscall numbers 435, 436, and 437 to get_proc_log_level, set_proc_log_level, and proc_log_message, respectively, 
+.br
+mapped to functions with the __x64_sys_ prefix. 
+.br
+New entries were added following the common ABI entries in the syscall table.
+.RE
+
+.PP
+/usr/rep/src/reptilian-kernel/include/linux/syscalls.h
+.RS
+Declares prototypes for the three syscall functions using “asmlinkage”, facilitating correct argument retrieval from user space.
+.br		
+“asmlinkage” ensures that system calls can safely access arguments passed from user applications.
+.RE
+
+.PP
+/usr/rep/src/reptilian-kernel/kernel/sys.c
+.RS
+Definitions of the three syscalls are added at the end of this file.
+.br  		
+get_proc_log_level returns the current log level and make sure it’s within 0-7; Otherwise, it returns -1 to indicate an error.
+.br	
+set_proc_log_level sets a new level if the new level is between 0 and 7 and the calling user has superuser privileges by checking current_cred()->euid.val.
+.br
+proc_log_message logs messages at a specified level and below, ensuring the leveål is between 0 and 7. 
+.br
+It safely transfers 128 characters user space messages to kernel space using copy_from_user(). 
+.br
+The call leverages current->comm for the executable name and current->pid for the process ID, 
+.br
+incorporating these into log messages formatted and outputted via the printk function. 
+.br
+This function utilizes Linux kernel log level prefixes (e.g., KERN_EMERG, KERN_ALERT) for integration with the kernel's logging system.
+.RE
+
+.PP	
+.B [A static library is created in process_log directory that contains library functions and harness functions.]
+	
+.PP
+/home/reptilian/process_log/process_log.h
+.RS
+Defines constants for system call numbers associated with logging functionality and declare library functions and harness functions.
+.RE
+
+.PP
+/home/reptilian/process_log/process_log.c
+.RS
+Library functions invoke the respective syscalls using the predefined constants, passing required parameters directly.s.
+.br
+Retrieve harness functions use “malloc” to dynamically allocate arrays to hold parameters for getting and setting the log level, facilitating direct syscall testing.
+.br
+Interpret harness functions return syscall outcomes directly, providing a straightforward interface for handling results.
+.RE
+
+.PP
+/home/reptilian/process_log/Makefile
+.RS
+Compiles process_log.c into process_log.o, then archives it into libprocess_log.a, creating the static library.
+.RE
+
+.SH TESTING
+.RS
+After generating the patch file, apply it to a clean kernel and reboot Reptilian.
+.br
+Use the “make” command to generate the library.
+.br
+Decompress the given test files, link test files to the process_log library, and run library tests and harness tests to compare the outputs.
+.RE
+
+.SH BUGS
+N/A
+
+.SH LINK
+https://youtu.be/yOFrFZHK7Ss 
+
+.SH REFERENCES/CITATIONS
+https://williamthegrey.wordpress.com/2014/05/18/add-your-own-system-calls-to-the-linux-kernel/
+.br
+https://ufl.zoom.us/rec/play/mhMRQFK5oOtldRYAy4hT01qcGnP64SmA3YENWEmIFyInEh_7zmRplfWzsBt1CxobDR34l7k2EpynOXjs.p3oZGwmbjt1_1Qvm?canPlayFromShare=true&from=share_recording_detail&continueMode=true&componentName=rec-play&originRequestUrl=https%3A%2F%2Fufl.zoom.us%2Frec%2Fshare%2F8vNmixcYICqlr9f9X4vC_ydmoGABP-4O_KOJqoW2qYlM7xThCMFXa4GLlUZ4qwPi.9d3mANUzxK4izU5P
+
+.SH AUTHOR
+Yixuan Yang

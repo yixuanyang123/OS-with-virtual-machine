@@ -1,0 +1,87 @@
+.TH COP4600 Project2
+.SH NAME
+Memory Management & Layering
+
+.SH SYNOPSIS
+.RS
+Implement a memory manager in C++ that handles initialization, tracking, allocation, and deallocation of memory sections.
+.RE
+
+.SH DESCRIPTION
+
+.PP 
+MemoryBlocks: A class represents a block of memory, either allocated or free.
+.RS
+MemoryBlocks(size_t size, size_t position, bool isHole): Constructor.
+.RE
+
+.PP
+MemoryManager: A class manages allocation and deallocation of memory blocks.
+.RS	
+MemoryManager(unsigned wordSize, function<int(int, void *)> allocator): Constructor for storing wordSize and default allocator function.
+.RE
+
+.PP
+~MemoryManager(): Destructor for releasing allocated memory by calling “shutdown” if memory was previously allocated.
+.PP
+void initialize(size_t sizeInWords): Instantiates contiguous array of sizeInWords * wordSize amount of bytes. 
+If initialize is called on an already initialized object, call shutdown then reinitialize.
+.PP
+void shutdown(): If block is initialized, free any heap memory, clear any relevant data structures, reset member variables.
+.PP
+void* getList(): Generates a list of current memory holes by iterating over the linked list of MemoryBlocks. Compiles a vector of holes, detailing their positions and sizes, 
+and converts the vector into a uint16_t array. Returns a pointer to the start of a 2-byte array containing the list of holes in [offset, length] format.
+.PP
+void* allocate(size_t sizeInBytes): Dynamically allocates memory for a requested size. Offsets are calculated by multiplying the starting position index of the memory block 
+with the size of a word.
+.PP
+void free(void *address): Deallocates memory at given addresses and merges adjacent free blocks. It calculates the block's position using the provided address and the base memory address 
+and navigates through the linked list of memory blocks to find the corresponding block. If adjacent blocks are also free, it merges them into a single larger block.
+.PP
+void setAllocator(function<int(int, void *)> allocator): Allows for dynamic changing of memory allocation by accepting a function pointer to a new allocator function, 
+which takes an integer size and a void pointer to a list of memory blocks, and returns the position for the next memory allocation.
+.PP
+int dumpMemoryMap(char *filename): Iterates through linked MemoryBlocks, constructing a string of allocated blocks' positions and sizes, and prints out current list of holes to a file. 
+Utilizes POSIX open to create file, write to output the memory map, and close to finalize the operation.
+.PP
+void* getBitmap(): Creates a bitmap representing the allocation status of each word, where 1 (hole) and 0 (allocated). Adds padding to the bitmap, ensuring its size is a multiple of 8 bits. 
+Converts the bitmap of individual bits into a byte array (byteMap), grouping every 8 bits into one byte. Prepends the size of the byte array to its beginning in little-endian format. 
+Allocates a uint8_t array dynamically and copies the byte map into it.
+.PP
+unsigned getWordSize(): Returns wordSize member variable.
+.PP
+void* getMemoryStart(): Returns pointer to the start of contiguous memory array.
+.PP
+unsigned getMemoryLimit(): Returns total amount of bytes it can store.
+.PP
+int bestFit(int sizeInWords, void *list): Calculating the size difference between each block and the requested size. 
+Finds a hole in the list that best fits the given sizeInWords by receiving a pointer to a list representing the sizes and positions of available blocks.
+.PP
+int worstFit(int sizeInWords, void *list): Iterating through the hole list, looking for the hole with the largest size that can accommodate the request.
+
+.SH TESTING
+.RS
+g++ -o ./CommandLineTest CommandLineTest.cpp -L ./MemoryManager -lMemoryManager
+.br
+valgrind --leak-check=full ./CommandLineTest
+.br
+Link the given test file to MemoryManager library, and run CommandLineTest with valgrind to check there are no leaks/errors during execution.
+.RE
+
+.SH BUGS
+N/A
+
+.SH LINK
+https://youtu.be/H2KB4ymsX8k
+
+.SH REFERENCES/CITATIONS
+https://www.youtube.com/watch?v=Oa4_wlZyDRw
+.br
+https://www.cs.rit.edu/~ark/lectures/gc/03_00_00.html
+.br
+https://www.ibm.com/developerworks/library/pa-dalign/index.html
+.br
+https://en.cppreference.com/w/cpp/utility/functional/function
+
+.SH AUTHOR
+Yixuan Yang

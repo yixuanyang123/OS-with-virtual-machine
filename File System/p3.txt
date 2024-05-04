@@ -1,0 +1,125 @@
+.TH COP4600 Project3
+.SH NAME
+File Systems
+
+.SH SYNOPSIS
+.B A file system library for WAD files and a FUSE daemon for directory access when mounted.
+
+.SH DESCRIPTION
+.B [Filepaths and filenames for library and daemon]
+
+.PP
+/home/reptilian/p3/libWad/Wad.cpp: C++ source file contains the implementation of Wad class.
+.PP
+/home/reptilian/p3/libWad/Wad.h: Header file defines the structure and functions of Wad class.
+.PP 
+/home/reptilian/p3/libWad/Makefile: Automate the compilation of libWad library.
+
+.PP 
+/home/reptilian/p3/wadfs/wadfs.cpp: C++ source file implements the functionality of the FUSE-based daemon.
+.PP 
+/home/reptilian/p3/wadfs/Makefile: Automate the compilation of wadfs daemon.
+
+.B [Data structures used in wad.cpp]
+.PP 
+struct Directory: Acts as nodes for directories and files in the WAD FS, containing name, type, data, parent, and children.
+.PP 
+struct Descriptor: In the Wad class, Descriptors hold metadata for files or directories, stored in a vector.
+Facilitates fast metadata access without full directory traversal.
+
+.B [Library functions in wad.cpp]
+.PP 
+newDir: Allocates a new Directory object.
+.pp 
+loadWad: Initializes a Wad object from a WAD file path by verifying the magic header, reading descriptor count and offset.
+.PP 
+getMagic: Returns the WAD file's magic identifier.
+.PP 
+isContent: Starts at the root, traverses the directory structure by navigating to child directories or files, verifies if the final segment points to a file.
+.PP 
+isDirectory: Starts at the root, navigates the directory structure. Returns true if the path ends with a directory.
+.PP 
+getSize: Validates if the path points to content using isContent, traverses to the file, and returns its size.
+.PP 
+getContents: After confirming the path points to content, it copies the data into buffer.
+.PP 
+getDirectory: Verifies the path points to a directory, traverses to the directory and populates the vector with the names of the children.
+.PP 
+createDirectory: Creates a new directory node with "_START" and "_END" markers, updates metadata in the descriptors vector.
+.PP 
+createFile: Find the desired location for the new file, creates a file node, and adds a descriptor to the descriptors vector.
+.PP
+writeToFile: Checks for pre-existing data, and writes the buffer to the file's data starting at the specified offset.
+.PP 
+findDirectoryRecursive: Recursively searches for a directory by name starting from a given directory.
+.PP 
+wadSave: Saves the current WAD structure to the file at the specified path.
+
+.B [Callback funcions and wadfs main()]
+.PP
+wad_getattr: Determines if the path is a directory or file using Wad library methods.
+.PP 
+wad_init: Initializes FUSE context by returning a structure with a pointer to the Wad object, enabling file operations to access WAD file contents.
+.PP 
+wad_open: Handle the opening of files; check if the path refers to content.
+.PP 
+wad_opendir: Handle the opening of directories; check if the path refers to a directory.
+.PP 
+wad_read: Uses the getContents() to copy data into the buffer provided by FUSE, beginning at the specified offset.
+.PP 
+wad_readdir: Uses the getDirectory() to retrieve directory contents.
+.PP 
+wad_release: Marks the file handle as closed.
+.PP 
+wad_releasedir: Marks the directory handle as closed.
+.PP
+wad_mknod: Create a new file by calling createFile().
+.PP
+wad_mkdir: Create a new directory by calling createDirectory().
+.PP
+wad_write: Write data into a file.
+.PP 
+wad_destroy: A placeholder for cleanup operations.
+
+.pp 
+main(): Initializes the daemon, processes command-line arguments to locate WAD file and mount point, loads the WAD file, adjusts arguments for FUSE, then invokes fuse_main to start FUSE event loop, critical for WAD file integration with filesystem operations.
+
+.PP 
+Daemon leveraged Wad library: Daemon integrates Wad library to map FUSE filesystem operations to WAD file contents. Each callback function corresponds to a Wad library method, facilitating actions like file opening, data reading, and directory listing directly on the WAD file.
+
+.SH TESTING
+.B [Library testing methodology] ./run_libtest.sh: Compile libWad, executes library tests.
+
+.B [Daemon testing methodology]
+.PP
+sudo chmod 666 /dev/fuse: Give FUSE permissions.
+.PP 
+./wadfs/wadfs -s sample1.wad ./mountdir: Mounts sample1.wad into ./mountdir.
+.PP
+cp ./Gl/ad/os/cake.jpg ../new_cake.jpg: Check getContents().
+.pp
+mkdir ex: Inside mountdir, check createDirectory().
+.PP
+nano ep.txt: Inside mountdir, check createFile() and writeToFile().
+.PP 
+fusermount -u /home/reptilian/p3/mountdir: Unmounts the directory.
+
+.SH BUGS
+N/A
+
+.SH LINK
+https://www.youtube.com/watch?v=pvZc3BxxEdk
+
+.SH REFERENCES/CITATIONS
+https://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/html/
+.br
+https://engineering.facile.it/blog/eng/write-filesystem-fuse/
+.br
+https://maastaar.net/fuse/linux/filesystem/c/2019/09/28/writing-less-simple-yet-stupid-filesystem-using-FUSE-in-C/
+.br
+https://www.cs.hmc.edu/~geoff/classes/hmc.cs137.201601/homework/fuse/fuse_doc.html
+.br
+http://slade.mancubus.net/index.php?page=about
+
+.SH AUTHOR
+Yixuan Yang
